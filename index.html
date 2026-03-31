@@ -69,8 +69,6 @@
 
     // Données de secours (fallback) issues de votre extrait, au cas où le fichier local ne peut pas être lu (ex: blocage CORS)
     const fallbackCSV = `forecast_date,forecast_price
-01/03/2026,
-02/03/2026,
 03/03/2026,"39,76"
 04/03/2026,"47,57"
 05/03/2026,"43,07"
@@ -99,7 +97,7 @@
 28/03/2026,"47,71"
 29/03/2026,"47,71"
 30/03/2026,"47,55"
-31/03/2026,"47,58`;
+31/03/2026,"47,58"`;
 
     // Formateur de date (convertit JJ/MM/AAAA en texte lisible)
     const fmtDate = dateStr => {
@@ -124,7 +122,10 @@
         let priceStr = parts.slice(1).join(',').replace(/"/g, '').replace(',', '.').trim();
         const price = priceStr ? parseFloat(priceStr) : null;
         
-        cleanData.push({ date: dateStr, price: price });
+        // On ne conserve que les dates avec une valeur valide (ignore les 01/03 et 02/03 vides)
+        if (price !== null && !isNaN(price)) {
+          cleanData.push({ date: dateStr, price: price });
+        }
       });
 
       return cleanData;
@@ -228,7 +229,7 @@
       })
       .catch(err => {
         console.warn("Utilisation des données de secours :", err.message);
-        document.getElementById("status-msg").innerHTML = `<p class="error-msg">Affichage des données partielles (le fichier <b>${csvUrl}</b> n'a pas pu être chargé localement).</p>`;
+        // Le message d'erreur à l'écran a été supprimé
         // Utilisation des données de secours si le fetch échoue (ex: ouverture locale sans serveur HTTP)
         const data = parseCSV(fallbackCSV);
         renderChart(data);
