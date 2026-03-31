@@ -1,1 +1,238 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Prévision PRVG — Mai 2026</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body{
+      margin:0;
+      background:#fff;
+      font-family: 'Avenir', 'Avenir Next', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      display:flex;
+      justify-content:center;
+      padding:40px 16px 60px;
+    }
+    .chart-wrapper{
+      background:transparent;
+      border-radius:0;
+      box-shadow:none;
+      padding:0;
+      width:100%;
+      max-width:940px;
+    }
+    h1{
+      margin:0 0 14px;
+      text-align:center;
+      font-size:22px;
+      font-weight:600;
+      color:#0b0f19;
+    }
+    .legend-note{
+      margin:2px 0 12px;
+      text-align:center;
+      color:#64748b;
+      font-size:13px;
+    }
+    canvas{
+      width:100%!important;
+      height:auto!important;
+      display:block;
+      background:transparent!important;
+    }
+    .error-msg {
+      margin-top:10px;
+      color:#ef4444;
+      text-align:center;
+      font-size: 14px;
+    }
+    @media (max-width: 640px){
+      body{ padding:24px 12px 40px; }
+      .chart-wrapper{ max-width:100%; }
+      h1{ font-size:18px; line-height:1.3; padding:0 4px; }
+      .legend-note{ font-size:12px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="chart-wrapper">
+    <h1>Prévision du PRVG pour le mois de Mai 2026</h1>
+    <div class="legend-note">Unités : €/MWh (Basé sur les données de prévision)</div>
+    <canvas id="chart"></canvas>
+    <div id="status-msg"></div>
+  </div>
 
+  <script>
+    // Nom du fichier CSV attendu dans le même répertoire
+    const csvUrl = "Forecast PRVG - Feuille 5.csv";
+
+    // Données de secours (fallback) issues de votre extrait, au cas où le fichier local ne peut pas être lu (ex: blocage CORS)
+    const fallbackCSV = `forecast_date,forecast_price
+01/03/2026,
+02/03/2026,
+03/03/2026,"39,76"
+04/03/2026,"47,57"
+05/03/2026,"43,07"
+06/03/2026,"44,48"
+07/03/2026,"44,48"
+08/03/2026,"44,48"
+09/03/2026,"46,8"
+10/03/2026,"48,69"
+11/03/2026,"43,51"
+12/03/2026,"45,09"
+13/03/2026,"45,09"
+14/03/2026,"45,09"
+15/03/2026,"45,09"
+16/03/2026,"45,24"
+17/03/2026,"45,64"
+18/03/2026,"45,86"
+19/03/2026,47
+20/03/2026,"49,51"
+21/03/2026,"49,51"
+22/03/2026,"49,51"
+23/03/2026,"48,87"
+24/03/2026,"48,09"
+25/03/2026,"47,53"
+26/03/2026,"47,32"
+27/03/2026,"47,71"
+28/03/2026,"47,71"
+29/03/2026,"47,71"
+30/03/2026,"47,55"
+31/03/2026,"47,58`;
+
+    // Formateur de date (convertit JJ/MM/AAAA en texte lisible)
+    const fmtDate = dateStr => {
+      const parts = dateStr.split('/');
+      if(parts.length === 3) {
+        const d = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+        return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
+      }
+      return dateStr;
+    };
+
+    // Fonction pour parser le texte CSV
+    const parseCSV = (csvText) => {
+      const rows = csvText.trim().split(/\r?\n/).slice(1); // Retire l'entête
+      const cleanData = [];
+
+      rows.forEach(row => {
+        if (!row.trim()) return;
+        const parts = row.split(',');
+        const dateStr = parts[0].trim();
+        // Gestion des prix avec virgules et guillemets (ex: "39,76")
+        let priceStr = parts.slice(1).join(',').replace(/"/g, '').replace(',', '.').trim();
+        const price = priceStr ? parseFloat(priceStr) : null;
+        
+        cleanData.push({ date: dateStr, price: price });
+      });
+
+      return cleanData;
+    };
+
+    // Fonction principale pour créer le graphique
+    const renderChart = (dataArray) => {
+      // Appliquer la police Avenir globalement à Chart.js
+      Chart.defaults.font.family = "'Avenir', 'Avenir Next', system-ui, -apple-system, sans-serif";
+      
+      const labels = dataArray.map(r => fmtDate(r.date));
+      const prices = dataArray.map(r => r.price);
+
+      const ctx = document.getElementById("chart").getContext("2d");
+
+      // Couleurs basées sur le design system
+      const primaryColor = "#4f46e5"; // Indigo / Couleur principale du design
+      const gradientStart = "rgba(79, 70, 229, 0.35)";
+      const gradientEnd = "rgba(79, 70, 229, 0.00)";
+
+      // Création du dégradé 
+      const gF = ctx.createLinearGradient(0,0,0,400);
+      gF.addColorStop(0, gradientStart);
+      gF.addColorStop(1, gradientEnd);
+
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: "Prévision PRVG",
+              data: prices,
+              borderColor: primaryColor,
+              backgroundColor: gF,
+              borderWidth: 2,
+              pointRadius: 3, 
+              pointBackgroundColor: "#fff",
+              pointBorderColor: primaryColor,
+              pointHoverRadius: 6,
+              spanGaps: true, 
+              tension: 0.2,   
+              fill: true
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: {
+              position: "bottom",
+              labels: { color: "#1e293b", font: { size: 13, weight: "600" } }
+            },
+            tooltip: {
+              // Tooltip sombre et élégant typique des design systems modernes
+              backgroundColor:"#1e293b", borderColor:"#1e293b", borderWidth:1,
+              titleColor:"#ffffff", bodyColor:"#e2e8f0",
+              titleFont:{ weight:'700' }, bodyFont:{ weight:'500' },
+              padding:10, cornerRadius:8,
+              callbacks: {
+                label: (ctx) => {
+                  const val = ctx.parsed.y?.toFixed(2);
+                  return `Prix prévisionnel : ${val} € / MWh`;
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              ticks: { color:"#64748b", callback: v => `${Number(v).toFixed(0)} €` },
+              grid: { color:"rgba(0,0,0,0.04)" },
+              border: { display:false }
+            },
+            x: {
+              offset: true,
+              ticks: { color:"#64748b", maxRotation:45, autoSkip:true, maxTicksLimit:15 },
+              grid: { display:false },
+              border: { display:false }
+            }
+          }
+        }
+      });
+
+      // Recalcul hauteur pour iframe
+      setTimeout(() => {
+        const h = Math.max(document.documentElement.scrollHeight, document.body.scrollHeight);
+        if (window.parent) window.parent.postMessage({ type: 'resize-iframe', height: h + 20 }, '*');
+      }, 400);
+    };
+
+    // Chargement des données
+    fetch(csvUrl + "?v=" + Date.now(), { cache:"no-store" })
+      .then(r => { 
+        if(!r.ok) throw new Error("Fichier CSV local introuvable ou erreur de chargement."); 
+        return r.text(); 
+      })
+      .then(csvText => {
+        const data = parseCSV(csvText);
+        renderChart(data);
+      })
+      .catch(err => {
+        console.warn("Utilisation des données de secours :", err.message);
+        document.getElementById("status-msg").innerHTML = `<p class="error-msg">Affichage des données partielles (le fichier <b>${csvUrl}</b> n'a pas pu être chargé localement).</p>`;
+        // Utilisation des données de secours si le fetch échoue (ex: ouverture locale sans serveur HTTP)
+        const data = parseCSV(fallbackCSV);
+        renderChart(data);
+      });
+  </script>
+</body>
+</html>
